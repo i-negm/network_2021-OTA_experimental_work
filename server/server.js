@@ -18,23 +18,31 @@ app.get('/version', (req, res) => {
 
 app.get('/fetch', (req, res) => {
   var buffer;
+  const requestName = '/fetch';
+  const fileName = "./TestOTA.ino.esp32.bin";
+  // Get length of the application.bin
+  const fileSize = fs.statSync(fileName).size;
 
-  fs.open('./TestOTA.ino.esp32.bin', 'r', function (status, fd) {
+  console.log(`[DEBUG:${requestName}] Opening fileName:${fileName}, fileSize:${fileSize}...`);
+  
+  fs.open(fileName, 'r', function (status, fd) {
+    
+    // Check if opened successfully
     if (status) {
+      console.log(`[ERROR:${requestName}] Failed to open:${fileName}`);
       console.log(status.message);
       return;
     }
-
-    buffer = Buffer.alloc(100);
-    fs.read(fd, buffer, 0, 100, 0, function (err, num) {
-      console.log(buffer.toString('utf8', 0, num));
+    
+    // Send the file data
+    buffer = Buffer.alloc(fileSize);
+    fs.read(fd, buffer, 0, fileSize, 0, function (err, num) {
     });
-
-    console.log(buffer)
-    download(buffer, 'TestOTA.ino.esp32.bin', 'application/octet-stream', res)
-
+    
+    console.log(`[DEBUG:${requestName}] Embed file:${fileName} in HTTP response...`);
+    download(buffer, fileName, 'application/octet-stream', res);
+    console.log(`[DEBUG:${requestName}] Response with file:${fileName} successful.`);
   });
-
   
 })
 
