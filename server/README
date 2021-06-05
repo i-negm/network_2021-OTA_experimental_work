@@ -1,0 +1,8 @@
+## Install
+
+1. You need to install NodeJS+NPM, https://nodejs.org/dist/v16.3.0/node-v16.3.0-x64.msi
+2. You need to run inside `server` dir, `npm install`
+
+## Run
+
+inside `server` just run this command `npm run server`
