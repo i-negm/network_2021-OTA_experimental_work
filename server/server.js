@@ -18,25 +18,22 @@ app.get('/version', (req, res) => {
 
 app.get('/fetch', (req, res) => {
   var buffer;
-
-  fs.open('./TestOTA.ino.esp32.bin', 'r', function (status, fd) {
+  
+  fs.readFile('./TestOTA.ino.esp32.bin', 'utf8', function (status, fd) {
     if (status) {
       console.log(status.message);
       return;
     }
-
-    buffer = Buffer.alloc(100);
-    fs.read(fd, buffer, 0, 100, 0, function (err, num) {
-      console.log(buffer.toString('utf8', 0, num));
+    download(fd, 'TestOTA.ino.esp32.bin', 'application/octet-stream', res)
+      console.log(fd.length);
     });
 
-    console.log(buffer)
-    download(buffer, 'TestOTA.ino.esp32.bin', 'application/octet-stream', res)
+    //console.log(buffer)
+    // download(buffer, 'TestOTA.ino.esp32.bin', 'application/octet-stream', res)
 
   });
 
-  
-})
+
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
