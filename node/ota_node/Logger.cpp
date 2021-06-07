@@ -1,6 +1,11 @@
 #include <Arduino.h>
 #include "Logger.h"
 
+static String getCurrentTaskName()
+{
+  return (String)pcTaskGetTaskName(NULL);
+}
+
 void Logger::init(void)
 {
   Serial.begin(115200);
@@ -9,18 +14,18 @@ void Logger::init(void)
 
 void Logger::debug(String fmt)
 {
-  Serial.print("[DEBUG]: ");
+  Serial.print("[DEBUG] [" + getCurrentTaskName() + "]: ");
   Serial.print(fmt);
 }
 
 void Logger::error(String fmt)
 {
-  Serial.print("[ERROR]: ");
+  Serial.print("[ERROR] [" + getCurrentTaskName() + "]: ");
   Serial.print(fmt);
 }
 
 void Logger::warn(String fmt)
 {
-  Serial.print("[ERROR]: ");
+  Serial.print("[WARN] [" + getCurrentTaskName() + "]: ");
   Serial.print(fmt);
 }

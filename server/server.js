@@ -19,7 +19,7 @@ app.get('/version', (req, res) => {
 app.get('/fetch', (req, res) => {
   var buffer;
   const requestName = '/fetch';
-  const fileName = "./TestOTA.ino.esp32.bin";
+  const fileName = "../node/ota_node/ota_node.ino.esp32.bin";
   // Get length of the application.bin
   const fileSize = fs.statSync(fileName).size;
 

@@ -15,10 +15,21 @@ static void initWiFi()
   }
 }
 
+static void Task1(void* pvParameters)
+{
+
+  while(1)
+  {
+    Logger::debug("Current Software Version: " + SW_VERSION + ", Compiled at: " + DATE_TIME + "\n");
+    vTaskDelay(1000/portTICK_PERIOD_MS);
+  }
+}
+
 void System::init(void)
 {
   Logger::init();
   initWiFi();
   Logger::debug("Successfully connected to ("+ String(SSID_NAME) +").\n");
-  OTA::execOTA();
+  // OTA::execOTA();
+  xTaskCreate(Task1, "Task1", 1000, NULL, 1, NULL);
 }
