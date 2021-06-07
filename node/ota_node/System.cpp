@@ -1,7 +1,9 @@
 #include "Logger.h"
 #include "System.h"
 #include "OTA.h"
+#include "Tasks.h"
 
+/* Arduino Libraries */
 #include <WiFi.h>
 
 static void initWiFi()
@@ -12,16 +14,6 @@ static void initWiFi()
   while (WiFi.status() != WL_CONNECTED) {
     Logger::debug("Trying to connect (every 500ms)...\n"); // Keep the serial monitor lit!
     delay(500);
-  }
-}
-
-static void Task1(void* pvParameters)
-{
-
-  while(1)
-  {
-    Logger::debug("Current Software Version: " + SW_VERSION + ", Compiled at: " + DATE_TIME + "\n");
-    vTaskDelay(1000/portTICK_PERIOD_MS);
   }
 }
 
