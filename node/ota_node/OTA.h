@@ -5,7 +5,8 @@
 class OTA
 {
 public:
-  static void execOTA();
+  static void execOTA(void* params);
+  static void thread(void* params);
 private:
   static WiFiClient client;
   static long contentLength;

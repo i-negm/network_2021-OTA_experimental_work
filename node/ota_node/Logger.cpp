@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "Logger.h"
 
-static String getCurrentTaskName()
+static inline String getCurrentTaskName()
 {
   return (String)pcTaskGetTaskName(NULL);
 }

@@ -23,5 +23,6 @@ void System::init(void)
   initWiFi();
   Logger::debug("Successfully connected to ("+ String(SSID_NAME) +").\n");
   // OTA::execOTA();
-  xTaskCreate(Task1, "Task1", 1000, NULL, 1, NULL);
+  xTaskCreate(TaskMain, "Main_Task", 5000, NULL, 1, NULL);
+  xTaskCreate(OTA::execOTA, "OTA_Task", 100000, NULL, 1, NULL);
 }

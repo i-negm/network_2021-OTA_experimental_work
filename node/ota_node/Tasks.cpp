@@ -1,7 +1,7 @@
 #include "Logger.h"
 #include "System_Cfg.h"
 
-void Task1(void* pvParameters)
+void TaskMain(void* pvParameters)
 {
   while(1)
   {

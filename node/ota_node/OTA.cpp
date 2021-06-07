@@ -8,46 +8,50 @@ WiFiClient OTA::client;
 long OTA::contentLength = 0;
 bool OTA::isValidContentType = false;
 
-String OTA::getHeaderValue(String header, String headerName) {
+String OTA::getHeaderValue(String header, String headerName)
+{
   return header.substring(strlen(headerName.c_str()));
 }
 
-void OTA::execOTA()
+void OTA::execOTA(void* params)
 {
-  Logger::debug("Connecting to: " + String(FOTA_SERVER_IP) + "\n");
-  // Connect to S3
-  if (OTA::client.connect(String(FOTA_SERVER_IP).c_str(), FOTA_SERVER_PORT))
+  while (1)
   {
-    // Connection Succeed.
-    // Fecthing the FOTA_SERVER_BIN
-    Logger::debug("Fetching Bin: " + String(FOTA_SERVER_BIN) + "\n");
-
-    // Get the contents of the FOTA_SERVER_BIN file
-    OTA::client.print(String("GET ") + FOTA_SERVER_BIN + " HTTP/1.1\r\n" +
-                 "Host: " + FOTA_SERVER_IP + "\r\n" +
-                 "Cache-Control: no-cache\r\n" +
-                 "Connection: close\r\n\r\n");
-
-    // Check what is being sent
-    //    Serial.print(String("GET ") + FOTA_SERVER_BIN + " HTTP/1.1\r\n" +
-    //                 "FOTA_SERVER_IP: " + FOTA_SERVER_IP + "\r\n" +
-    //                 "Cache-Control: no-cache\r\n" +
-    //                 "Connection: close\r\n\r\n");
-
-    unsigned long timeout = millis();
-    while (OTA::client.available() == 0)
+    vTaskDelay(FOTA_SERVER_PERIODIC_CHECK_MS / portTICK_PERIOD_MS );
+    Logger::debug("Connecting to: " + String(FOTA_SERVER_IP) + "\n");
+    // Connect to S3
+    if (OTA::client.connect(String(FOTA_SERVER_IP).c_str(), FOTA_SERVER_PORT))
     {
-      if (millis() - timeout > 5000)
-      {
-        Logger::error("OTA::client Timeout !");
-        OTA::client.stop();
-        return;
-      }
-    }
-    // Once the response is available,
-    // check stuff
+      // Connection Succeed.
+      // Fecthing the FOTA_SERVER_BIN
+      Logger::debug("Fetching Bin: " + String(FOTA_SERVER_BIN) + "\n");
 
-    /*
+      // Get the contents of the FOTA_SERVER_BIN file
+      OTA::client.print(String("GET ") + FOTA_SERVER_BIN + " HTTP/1.1\r\n" +
+                        "Host: " + FOTA_SERVER_IP + "\r\n" +
+                        "Cache-Control: no-cache\r\n" +
+                        "Connection: close\r\n\r\n");
+
+      // Check what is being sent
+      //    Serial.print(String("GET ") + FOTA_SERVER_BIN + " HTTP/1.1\r\n" +
+      //                 "FOTA_SERVER_IP: " + FOTA_SERVER_IP + "\r\n" +
+      //                 "Cache-Control: no-cache\r\n" +
+      //                 "Connection: close\r\n\r\n");
+
+      unsigned long timeout = millis();
+      while (OTA::client.available() == 0)
+      {
+        if (millis() - timeout > 5000)
+        {
+          Logger::error("OTA::client Timeout !");
+          OTA::client.stop();
+          return;
+        }
+      }
+      // Once the response is available,
+      // check stuff
+
+      /*
        Response Structure
         HTTP/1.1 200 OK
         x-amz-id-2: NVKxnU1aIQMmpGKhSwpCBh8y2JPbak18QLIfE+OiUDOos+7UftZKjtCFqrwsGOZRN5Zee0jpTd0=
@@ -63,123 +67,238 @@ void OTA::execOTA()
         {{BIN FILE CONTENTS}} 
 
     */
-    while (OTA::client.available())
-    {
-      // read line till /n
-      String line = OTA::client.readStringUntil('\n');
-      // remove space, to check if the line is end of headers
-      line.trim();
-
-      // if the the line is empty,
-      // this is end of headers
-      // break the while and feed the
-      // remaining `OTA::client` to the
-      // Update.writeStream();
-      if (!line.length())
+      while (OTA::client.available())
       {
-        //headers ended
-        break; // and get the OTA started
-      }
+        // read line till /n
+        String line = OTA::client.readStringUntil('\n');
+        // remove space, to check if the line is end of headers
+        line.trim();
 
-      // Check if the HTTP Response is 200
-      // else break and Exit Update
-      if (line.startsWith("HTTP/1.1"))
-      {
-        if (line.indexOf("200") < 0)
+        // if the the line is empty,
+        // this is end of headers
+        // break the while and feed the
+        // remaining `OTA::client` to the
+        // Update.writeStream();
+        if (!line.length())
         {
-          Logger::debug("Got a non 200 status code from server. Exiting OTA Update.\n");
-          break;
+          //headers ended
+          break; // and get the OTA started
         }
-      }
 
-      // extract headers here
-      // Start with content length
-      if (line.startsWith("Content-Length: "))
-      {
-        OTA::contentLength = atol((OTA::getHeaderValue(line, "Content-Length: ")).c_str());
-        Logger::debug("Got " + String(OTA::contentLength) + " bytes from server\n");
-      }
-
-      // Next, the content type
-      if (line.startsWith("Content-Type: "))
-      {
-        String contentType = OTA::getHeaderValue(line, "Content-Type: ");
-        Logger::debug("Got " + contentType + " payload.\n");
-        if (contentType == "application/octet-stream")
+        // Check if the HTTP Response is 200
+        // else break and Exit Update
+        if (line.startsWith("HTTP/1.1"))
         {
-          OTA::isValidContentType = true;
+          if (line.indexOf("200") < 0)
+          {
+            Logger::debug("Got a non 200 status code from server. Exiting OTA Update.\n");
+            break;
+          }
         }
-      }
-    }
-  }
-  else
-  {
-    // Connect to S3 failed
-    // May be try?
-    // Probably a choppy network?
-    Logger::error("Connection to " + String(FOTA_SERVER_IP) + " failed. Please check your setup" + "\n");
-    // retry??
-    // execOTA();
-  }
 
-  // Check what is the contentLength and if content type is `application/octet-stream`
-  Logger::debug("contentLength : " + String(OTA::contentLength) + ", isValidContentType : " + String(OTA::isValidContentType) + "\n");
-
-  // check contentLength and content type
-  if (OTA::contentLength && OTA::isValidContentType)
-  {
-    // Check if there is enough to OTA Update
-    bool canBegin = Update.begin(contentLength);
-
-    // If yes, begin
-    if (canBegin)
-    {
-      Logger::debug("Begin OTA. This may take 2 - 5 mins to complete. Things might be quite for a while.. Patience!\n");
-      // No activity would appear on the Serial monitor
-      // So be patient. This may take 2 - 5mins to complete
-      size_t written = Update.writeStream(OTA::client);
-
-      if (written == OTA::contentLength)
-      {
-        Logger::debug("Written : " + String(written) + " successfully\n");
-      }
-      else
-      {
-        Logger::error("Written only : " + String(written) + "/" + String(OTA::contentLength) + ". Retry?\n");
-        // retry??
-        // execOTA();
-      }
-
-      if (Update.end())
-      {
-        Logger::debug("OTA done!\n");
-        if (Update.isFinished())
+        // extract headers here
+        // Start with content length
+        if (line.startsWith("Content-Length: "))
         {
-          Logger::debug("Update successfully completed. Rebooting.\n");
-          ESP.restart();
+          OTA::contentLength = atol((OTA::getHeaderValue(line, "Content-Length: ")).c_str());
+          Logger::debug("Got " + String(OTA::contentLength) + " bytes from server\n");
         }
-        else
+
+        // Next, the content type
+        if (line.startsWith("Content-Type: "))
         {
-          Logger::error("Update not finished? Something went wrong!\n");
+          String contentType = OTA::getHeaderValue(line, "Content-Type: ");
+          Logger::debug("Got " + contentType + " payload.\n");
+          if (contentType == "application/octet-stream")
+          {
+            OTA::isValidContentType = true;
+          }
         }
-      }
-      else
-      {
-        Logger::error("Error Occurred. Error #: " + String(Update.getError()) + "\n");
       }
     }
     else
     {
-      // not enough space to begin OTA
-      // Understand the partitions and
-      // space availability
-      Logger::error("Not enough space to begin OTA\n");
+      // Connect to S3 failed
+      // May be try?
+      // Probably a choppy network?
+      Logger::error("Connection to " + String(FOTA_SERVER_IP) + " failed. Please check your setup" + "\n");
+      // retry??
+      // execOTA();
+    }
+
+    // Check what is the contentLength and if content type is `application/octet-stream`
+    Logger::debug("contentLength : " + String(OTA::contentLength) + ", isValidContentType : " + String(OTA::isValidContentType) + "\n");
+
+    // check contentLength and content type
+    if (OTA::contentLength && OTA::isValidContentType)
+    {
+      // Check if there is enough to OTA Update
+      bool canBegin = Update.begin(contentLength);
+
+      // If yes, begin
+      if (canBegin)
+      {
+        Logger::debug("Begin OTA. This may take 2 - 5 mins to complete. Things might be quite for a while.. Patience!\n");
+        // No activity would appear on the Serial monitor
+        // So be patient. This may take 2 - 5mins to complete
+        size_t written = Update.writeStream(OTA::client);
+
+        if (written == OTA::contentLength)
+        {
+          Logger::debug("Written : " + String(written) + " successfully\n");
+        }
+        else
+        {
+          Logger::error("Written only : " + String(written) + "/" + String(OTA::contentLength) + ". Retry?\n");
+          // retry??
+          // execOTA();
+        }
+
+        if (Update.end())
+        {
+          Logger::debug("OTA done!\n");
+          if (Update.isFinished())
+          {
+            Logger::debug("Update successfully completed. Rebooting.\n");
+            ESP.restart();
+          }
+          else
+          {
+            Logger::error("Update not finished? Something went wrong!\n");
+          }
+        }
+        else
+        {
+          Logger::error("Error Occurred. Error #: " + String(Update.getError()) + "\n");
+        }
+      }
+      else
+      {
+        // not enough space to begin OTA
+        // Understand the partitions and
+        // space availability
+        Logger::error("Not enough space to begin OTA\n");
+        OTA::client.flush();
+      }
+    }
+    else
+    {
+      Logger::error("There was no content in the response\n");
       OTA::client.flush();
     }
   }
-  else
+}
+
+void OTA::thread(void *params)
+{
+  while (1)
   {
-    Logger::error("There was no content in the response\n");
-    OTA::client.flush();
+    Logger::debug("Connecting to OTA server (" + String(FOTA_SERVER_IP) + ")\n");
+
+    /* Connecting to the OTA server */
+    if (OTA::client.connect(String(FOTA_SERVER_IP).c_str(), FOTA_SERVER_PORT))
+    {
+      // Getting the latest version
+      Logger::debug("Request the latest available bin version...\n");
+      OTA::client.print(String("GET ") + FOTA_SERVER_BIN + " HTTP/1.1\r\n" + "Host: " + FOTA_SERVER_IP + "\r\n" + "Cache-Control: no-cache\r\n" + "Connection: close\r\n\r\n");
+      /* Wait for a respond or a time out */
+      unsigned long timeout = millis();
+      while (OTA::client.available() == 0)
+      {
+        if (millis() - timeout > FOTA_SERVER_TIMEOUT_MS)
+        {
+          Logger::error("Connection with server timeout!");
+          OTA::client.stop();
+          return;
+        }
+      }
+
+      /* Once response is available */
+      while (OTA::client.available())
+      {
+        // read line till /n
+        String line = OTA::client.readStringUntil('\n');
+        // remove space, to check if the line is end of headers
+        line.trim();
+
+        // if the the line is empty,
+        // this is end of headers
+        // break the while and feed the
+        // remaining `OTA::client` to the
+        // Update.writeStream();
+        if (!line.length())
+        {
+          //headers ended
+          break; // and get the OTA started
+        }
+
+        // Check if the HTTP Response is 200
+        // else break and Exit Update
+        if (line.startsWith("HTTP/1.1"))
+        {
+          if (line.indexOf("200") < 0)
+          {
+            Logger::debug("Got a non 200 status code from server. Exiting OTA Update.\n");
+            break;
+          }
+        }
+
+        // extract headers here
+        // Start with content length
+        if (line.startsWith("Content-Length: "))
+        {
+          OTA::contentLength = atol((OTA::getHeaderValue(line, "Content-Length: ")).c_str());
+          Logger::debug("Got " + String(OTA::contentLength) + " bytes from server\n");
+        }
+
+        // Next, the content type
+        if (line.startsWith("Content-Type: "))
+        {
+          String contentType = OTA::getHeaderValue(line, "Content-Type: ");
+          Logger::debug("Got " + contentType + " payload.\n");
+          if (contentType == "text/html")
+          {
+            OTA::isValidContentType = true;
+          }
+        }
+      }
+    }
+    else
+    {
+      Logger::error("Connection to OTA server (" + String(FOTA_SERVER_IP) + ") failed. Please check your setup\n");
+    }
+
+    // Check what is the contentLength and if content type is `text/html`
+    Logger::debug("contentLength : " + String(OTA::contentLength) + ", isValidContentType : " + String(OTA::isValidContentType) + "\n");
+
+    // check contentLength and content type
+    String content = "";
+    char c;
+    unsigned long timeoutStart = millis();
+    if (OTA::contentLength && OTA::isValidContentType)
+    {
+      while ((OTA::client.connected() || OTA::client.available()) &&
+             ((millis() - timeoutStart) < FOTA_SERVER_TIMEOUT_MS))
+      {
+        if (OTA::client.available())
+        {
+          c = OTA::client.read();
+          // Print out this character
+          content += c;
+          // We read something, reset the timeout counter
+          timeoutStart = millis();
+        }
+        else
+        {
+          // We haven't got any data, so let's pause to allow some to
+          // arrive
+          vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+      }
+    }
+    Logger::debug("Content : " + content);
+
+    // Request every 2 seconds
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
   }
 }
