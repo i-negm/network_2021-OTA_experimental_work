@@ -10,9 +10,11 @@
 #define FOTA_SERVER_BIN_VERSION "/version"
 #define FOTA_SERVER_PERIODIC_CHECK_MS 5000
 
+#define LED_BUILTIN 2
+#define LED_FREQUENCY_MS 100
 
 #define SW_MAJOR 1
-#define SW_MINOR 1
+#define SW_MINOR 3
 #define SW_PATCH 0
 #define SW_VERSION (String)("v" + String(SW_MAJOR) + "." + String(SW_MINOR) + "." + String(SW_PATCH))
 

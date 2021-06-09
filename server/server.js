@@ -8,13 +8,25 @@ download = function (data, filename, mimetype, res) {
       'Content-Type': mimetype,
       'Content-disposition': 'attachment;filename=' + filename,
       'Content-Length': data.length
+    });
+    res.end(Buffer.from(data, 'binary'));
+  };
+  
+  app.get('/version', (req, res) => {
+    const requestName = '/version';
+    const fileName = '../node/ota_node/version.txt';
+    console.log(`[DEBUG:${requestName}] Opening fileName:${fileName}...`);
+  fs.readFile(fileName, 'utf8', function (status, data) {
+    // Check if opened successfully
+    if (status) {
+      console.log(`[ERROR:${requestName}] Failed to open:${fileName}`);
+      console.log(error);
+      return;
+    }
+    res.send(data);
+    console.log(`[DEBUG:${requestName}] Response with content of file:${fileName} successful.\n`);
   });
-  res.end(Buffer.from(data, 'binary'));
-};
-
-app.get('/version', (req, res) => {
-  res.send('v3.3.0!')
-})
+});
 
 app.get('/fetch', (req, res) => {
   var buffer;
